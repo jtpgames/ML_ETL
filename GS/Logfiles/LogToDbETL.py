@@ -1,3 +1,4 @@
+from os import path, mkdir
 import sqlite3
 from datetime import datetime
 from glob import glob
@@ -71,7 +72,12 @@ def construct_insert_training_data_statement(table_name, row: TrainingDataRow):
 
 
 def setup_db() -> Connection:
-    db_connection = create_connection(r"db/trainingdata.db")
+    pathToDb = r"db/trainingdata.db"
+
+    if not path.exists("db"):
+        mkdir("db")
+
+    db_connection = create_connection(pathToDb)
 
     if db_connection is None:
         exit(1)
@@ -98,7 +104,7 @@ def setup_db() -> Connection:
 if __name__ == '__main__':
     dbConnection = setup_db()
 
-    for logFile in sorted(glob("data/Conv_2021-*.log")):
+    for logFile in sorted(glob("../GS Logs Vision 21.12.20_03.12.21/Conv_2021-*.log")):
         if not training_data_exists_in_db(dbConnection, logFile):
             for line in read_data_line_from_log_file(logFile):
                 execute_sql_statement(
