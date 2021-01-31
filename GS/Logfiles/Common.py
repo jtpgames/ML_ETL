@@ -1,9 +1,8 @@
 import argparse
-import logging
 import os
 import re
-from re import search
 from datetime import datetime
+from re import search
 from typing import Dict
 
 

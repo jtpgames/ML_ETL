@@ -1,11 +1,10 @@
-import re
 import sqlite3
 from datetime import datetime
 from sqlite3 import Connection, Error, Cursor
 
+from pandas import DataFrame
 
-def get_date_from_string(line):
-    return re.search(r"\d*-\d*-\d*", line).group().strip()
+from GS.Logfiles.Common import get_date_from_string
 
 
 class TrainingDataRow:
@@ -14,17 +13,18 @@ class TrainingDataRow:
     _number_of_parallel_requests_end: int = None
     _number_of_parallel_requests_finished: int = None
     _request_type: str = None
+    _system_cpu_usage: float = 0.
     _request_execution_time_ms: int = None
 
     @staticmethod
-    def from_dict(object):
+    def from_logfile_entry(logfile_entry):
         row = TrainingDataRow()
-        row.timestamp = object['time_stamp']
-        row.number_of_parallel_requests_start = object['number_of_parallel_requests_start']
-        row.number_of_parallel_requests_end = object['number_of_parallel_requests_end']
-        row.number_of_parallel_requests_finished = object['number_of_parallel_requests_finished']
-        row.request_type = object['request_type']
-        row.request_execution_time_ms = object['response_time']
+        row.timestamp = logfile_entry['time_stamp']
+        row.number_of_parallel_requests_start = logfile_entry['number_of_parallel_requests_start']
+        row.number_of_parallel_requests_end = logfile_entry['number_of_parallel_requests_end']
+        row.number_of_parallel_requests_finished = logfile_entry['number_of_parallel_requests_finished']
+        row.request_type = logfile_entry['request_type']
+        row.request_execution_time_ms = logfile_entry['response_time']
 
         return row
 
@@ -35,6 +35,7 @@ class TrainingDataRow:
             number_of_parallel_requests_end: {self._number_of_parallel_requests_end},
             number_of_parallel_requests_finished: {self._number_of_parallel_requests_finished},
             request_type: {self._request_type},
+            system_cpu_usage: {self._system_cpu_usage},
             request_execution_time_ms: {self._request_execution_time_ms}
             """)
 
@@ -59,6 +60,10 @@ class TrainingDataRow:
         return self._request_type
 
     @property
+    def system_cpu_usage(self):
+        return self._system_cpu_usage
+
+    @property
     def request_execution_time_ms(self):
         return self._request_execution_time_ms
 
@@ -81,6 +86,10 @@ class TrainingDataRow:
     @request_type.setter
     def request_type(self, value):
         self._request_type = value
+
+    @system_cpu_usage.setter
+    def system_cpu_usage(self, value):
+        self._system_cpu_usage = value
 
     @request_execution_time_ms.setter
     def request_execution_time_ms(self, value):
@@ -150,7 +159,9 @@ class SQLSelectExecutor:
             if length > 4:
                 row.request_type = row_from_db[4]
             if length > 5:
-                row.request_execution_time_ms = row_from_db[5]
+                row.system_cpu_usage = row_from_db[5]
+            if length > 6:
+                row.request_execution_time_ms = row_from_db[6]
 
             return row
 
@@ -197,4 +208,85 @@ def training_data_exists_in_db(db_connection: Connection, path_to_log_file: str)
     results = list(select.fetch_all_results(cur))
 
     return results[0].timestamp == 1
+
+
+def read_all_training_data_from_db():
+    db_connection = create_connection(r"db/trainingdata.db")
+
+    if db_connection is None:
+        print("Could not read performance metrics")
+        exit(1)
+
+    select = SQLSelectExecutor(db_connection) \
+        .construct_select_statement("gs_training_data")
+
+    cur = select.execute_select_statement()
+
+    for row in select.fetch_all_results(cur):
+        yield row
+
+    db_connection.close()
+
+
+known_request_types = {}
+
+
+def read_all_performance_metrics_from_db():
+    response_times = []
+
+    begin = datetime.now()
+
+    for row in read_all_training_data_from_db():
+        time_stamp = row.timestamp
+
+        weekday = time_stamp.weekday()
+
+        # we are only interested in the time of day, not the date
+        time = time_stamp.timetz()
+        milliseconds = time.microsecond / 1000000
+        time_of_day_in_seconds = milliseconds + time.second + time.minute * 60 + time.hour * 3600
+
+        # time_of_request = time_stamp.timestamp()
+
+        time_of_request = time_of_day_in_seconds
+
+        request_type = row.request_type
+
+        if request_type not in known_request_types:
+            known_request_types[request_type] = len(known_request_types)
+
+        request_type_as_int = known_request_types[request_type]
+
+        response_times.append((
+            time_of_request,
+            weekday,
+            row.number_of_parallel_requests_start,
+            row.number_of_parallel_requests_end,
+            row.number_of_parallel_requests_finished,
+            request_type_as_int,
+            float(row.system_cpu_usage),
+            float(row.request_execution_time_ms) / 1000,
+        ))
+
+    df = DataFrame.from_records(
+        response_times,
+        columns=[
+            'Timestamp',
+            'WeekDay',
+            'PR 1',
+            'PR 2',
+            'PR 3',
+            'Request Type',
+            'CPU (System)',
+            'Response Time s'
+        ]
+    )
+
+    print(f"read_all_performance_metrics_from_db finished in {(datetime.now() - begin).total_seconds()} s")
+
+    # print("== " + path + "==")
+    # print(df.describe())
+    # print("Number of response time outliers: %i" % len(detect_response_time_outliers(df)))
+
+    return df
 

@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+from asyncio import AbstractEventLoop
 from datetime import datetime, timedelta
 from time import strftime, localtime
 
@@ -9,28 +10,10 @@ import async_timeout
 from netdata import Netdata
 from pandas import DataFrame
 
-# configure root logger
-
-root_logger = logging.getLogger()
-root_logger.setLevel(logging.DEBUG)
-
-# create console handler and set level to debug
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-
-# create formatter
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# add formatter to ch
-ch.setFormatter(formatter)
-
-# add ch to logger
-root_logger.addHandler(ch)
-
 _logger = logging.getLogger(__name__)
 
 
-async def main():
+async def get_system_cpu_data(loop: AbstractEventLoop, day_to_get_metrics_from: datetime):
     """Get the data from a Netdata instance."""
     async with aiohttp.ClientSession() as session:
         data = Netdata("fra01.helarion.eu", loop, session, port=19999)
@@ -41,12 +24,17 @@ async def main():
         # # Print the current value of the system's CPU
         # _logger.info("CPU System: %s", round(data.values["system"], 2))
 
-        # Get data from yesterday
-        day_to_get_metrics_from = datetime.now() - timedelta(days=1)
-
         # Get system cpu usage
-        dataframe = await get_data_from_netdata_async(data, session, day_to_get_metrics_from, dimension="system")
+        dataframe = await get_data_from_netdata_async(
+            data,
+            loop,
+            session,
+            day_to_get_metrics_from,
+            dimension="system"
+        )
         print_dataframe(dataframe)
+
+        return dataframe
 
         # Get data for the cpu user group and the system.cpu dimension
         # chart = "groups.cpu_user"
@@ -68,6 +56,7 @@ def print_dataframe(dataframe: DataFrame):
 
 async def get_data_from_netdata_async(
         netdata: Netdata,
+        loop: AbstractEventLoop,
         session: aiohttp.ClientSession,
         date_to_retrieve: datetime,
         chart: str = "system.cpu",
@@ -76,6 +65,7 @@ async def get_data_from_netdata_async(
     """
     Retrieve performance metrics from netdata using the data endpoint.
     :param netdata: Existing netdata instance
+    :param loop: Existing AbstractEventLoop instance
     :param session: Existing ClientSession instance
     :param date_to_retrieve: the date of the day to retrieve data from
     :param chart: Chart to get data from, defaults to system.cpu
@@ -113,7 +103,7 @@ async def get_data_from_netdata_async(
     return dataframe
 
 
-def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: float):
+def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: float) -> DataFrame:
     # we use rounding to get the nearest integer
     # if x is th number of seconds of our timestamp
     # up to x.499 we get x and after x.500 we get x+1 sec
@@ -126,5 +116,27 @@ def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: f
 
 
 if __name__ == '__main__':
+    # configure root logger
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # create console handler and set level to debug
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    # add ch to logger
+    root_logger.addHandler(ch)
+
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+
+    # Get data from yesterday
+    day_to_get_metrics_from = datetime.now()  # - timedelta(days=1)
+
+    loop.run_until_complete(get_system_cpu_data(loop, day_to_get_metrics_from))
