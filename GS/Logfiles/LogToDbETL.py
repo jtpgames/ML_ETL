@@ -142,7 +142,7 @@ if __name__ == '__main__':
                     resource_usage,
                     training_data_row.timestamp.timestamp()
                 )
-                if not resource_usage_row.empty:
+                if resource_usage_row is not None:
                     training_data_row.system_cpu_usage = resource_usage_row["system"]
                 else:
                     training_data_row.system_cpu_usage = 1

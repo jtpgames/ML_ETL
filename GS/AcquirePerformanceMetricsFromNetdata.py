@@ -4,6 +4,7 @@ import logging
 from asyncio import AbstractEventLoop
 from datetime import datetime, timedelta
 from time import strftime, localtime
+from typing import Optional
 
 import aiohttp
 import async_timeout
@@ -107,7 +108,7 @@ async def get_data_from_netdata_async(
     return dataframe
 
 
-def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: float) -> DataFrame:
+def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: float) -> Optional[DataFrame]:
     # we use rounding to get the nearest integer
     # if x is th number of seconds of our timestamp
     # up to x.499 we get x and after x.500 we get x+1 sec
@@ -117,7 +118,7 @@ def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: f
     try:
         return dataframe.loc[nearest_time]
     except KeyError:
-        return DataFrame()
+        return None
 
     # return dataframe.query('time == @nearest_time')
 
@@ -154,7 +155,7 @@ if __name__ == '__main__':
     for n in range(0, 1000):
         resource_usage_row = get_row_from_dataframe_using_nearest_time(
             df,
-            1612134001
+            0
         )
 
     print("Duration ", datetime.now().timestamp() - start)
