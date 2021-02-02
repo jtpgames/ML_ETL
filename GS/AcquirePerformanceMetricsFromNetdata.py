@@ -50,6 +50,8 @@ def print_dataframe(dataframe: DataFrame):
 
         return strftime("%d.%m %H:%M:%S", localtime(unix_timestamp))
 
+    dataframe = dataframe.reset_index()
+
     dataframe["time"] = dataframe["time"].apply(format_date)
     print(dataframe)
 
@@ -112,8 +114,6 @@ def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: f
 
     nearest_time = round(timestamp)
 
-    _logger.debug(nearest_time)
-
     try:
         return dataframe.loc[nearest_time]
     except KeyError:
@@ -148,9 +148,14 @@ if __name__ == '__main__':
 
     df = loop.run_until_complete(get_system_cpu_data(loop, day_to_get_metrics_from))
 
-    resource_usage_row = get_row_from_dataframe_using_nearest_time(
-        df,
-        1612134001
-    )
+    start = datetime.now().timestamp()
 
+    resource_usage_row = 0
+    for n in range(0, 1000):
+        resource_usage_row = get_row_from_dataframe_using_nearest_time(
+            df,
+            1612134001
+        )
+
+    print("Duration ", datetime.now().timestamp() - start)
     print(resource_usage_row)
