@@ -98,7 +98,9 @@ async def get_data_from_netdata_async(
 
     json_data = await response.json()
 
-    dataframe = DataFrame(json_data["data"], columns=json_data["labels"])
+    dataframe = DataFrame(json_data["data"],
+                          columns=json_data["labels"])
+    dataframe.set_index('time', inplace=True)
 
     return dataframe
 
@@ -112,7 +114,12 @@ def get_row_from_dataframe_using_nearest_time(dataframe: DataFrame, timestamp: f
 
     _logger.debug(nearest_time)
 
-    return dataframe.query('time == @nearest_time')
+    try:
+        return dataframe.loc[nearest_time]
+    except KeyError:
+        return DataFrame()
+
+    # return dataframe.query('time == @nearest_time')
 
 
 if __name__ == '__main__':
@@ -137,6 +144,13 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     # Get data from yesterday
-    day_to_get_metrics_from = datetime.now()  # - timedelta(days=1)
+    day_to_get_metrics_from = datetime.now() - timedelta(days=1)
 
-    loop.run_until_complete(get_system_cpu_data(loop, day_to_get_metrics_from))
+    df = loop.run_until_complete(get_system_cpu_data(loop, day_to_get_metrics_from))
+
+    resource_usage_row = get_row_from_dataframe_using_nearest_time(
+        df,
+        1612134001
+    )
+
+    print(resource_usage_row)
