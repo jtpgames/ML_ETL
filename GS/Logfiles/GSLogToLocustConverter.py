@@ -174,6 +174,12 @@ class GSLogConverter:
 
         tid, timestamp = GSLogConverter.get_threadid_and_timestamp(line)
 
+        if tid in self.startedCommands.keys():
+            print(tid, " already processes another command", self.startedCommands[tid]["cmd"])
+            print("new line ", line)
+            if not args.force:
+                input("Press ENTER to continue...")
+
         self.startedCommands[tid] = {
             "time": timestamp,
             "cmd": None,

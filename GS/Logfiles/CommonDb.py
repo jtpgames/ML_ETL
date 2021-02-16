@@ -4,7 +4,8 @@ from sqlite3 import Connection, Error, Cursor
 
 from pandas import DataFrame
 
-from GS.Logfiles.Common import get_date_from_string
+# from GS.Logfiles.Common import get_date_from_string
+from Common import get_date_from_string
 
 
 class TrainingDataRow:

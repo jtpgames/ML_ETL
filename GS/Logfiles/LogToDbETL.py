@@ -8,7 +8,7 @@ from sqlite3 import Error, Connection, Cursor
 from Common import get_date_from_string, read_data_line_from_log_file
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
     read_all_performance_metrics_from_db
-from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, get_row_from_dataframe_using_nearest_time
+# from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, get_row_from_dataframe_using_nearest_time
 
 
 def execute_sql_statement(conn: Connection, statement_sql: str, print_statement: bool = False):
@@ -112,7 +112,8 @@ if __name__ == '__main__':
 
     loop = asyncio.get_event_loop()
 
-    for logFile in sorted(glob("../GS Logs Vision 21.12.20_03.12.21/Conv_2021-*.log")):
+    # for logFile in sorted(glob("../GS Logs Vision 21.12.20_03.12.21/Conv_2021-*.log")):
+    for logFile in sorted(glob("../LogsToUse/Conv_2021-02-10.log")):
         if not training_data_exists_in_db(dbConnection, logFile):
 
             print("Processing ", logFile)
@@ -126,22 +127,23 @@ if __name__ == '__main__':
             # Get data from yesterday for testing purposes
             day_to_get_metrics_from = datetime.now() - timedelta(days=1)
 
-            resource_usage = loop.run_until_complete(
-                get_system_cpu_data(
-                    loop,
-                    day_to_get_metrics_from
-                )
-            )
+            # resource_usage = loop.run_until_complete(
+            #     get_system_cpu_data(
+            #         loop,
+            #         day_to_get_metrics_from
+            #     )
+            # )
 
             counter = 0
             for line in read_data_line_from_log_file(logFile):
                 training_data_row = TrainingDataRow.from_logfile_entry(line)
 
                 # get resource usage from netdata
-                resource_usage_row = get_row_from_dataframe_using_nearest_time(
-                    resource_usage,
-                    training_data_row.timestamp.timestamp()
-                )
+                resource_usage_row = None
+                # resource_usage_row = get_row_from_dataframe_using_nearest_time(
+                #     resource_usage,
+                #     training_data_row.timestamp.timestamp()
+                # )
                 if resource_usage_row is not None:
                     training_data_row.system_cpu_usage = resource_usage_row["system"]
                 else:
