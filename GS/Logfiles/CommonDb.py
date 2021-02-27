@@ -211,8 +211,8 @@ def training_data_exists_in_db(db_connection: Connection, path_to_log_file: str)
     return results[0].timestamp == 1
 
 
-def read_all_training_data_from_db():
-    db_connection = create_connection(r"db/trainingdata.db")
+def read_all_training_data_from_db(db_path: str):
+    db_connection = create_connection(db_path)
 
     if db_connection is None:
         print("Could not read performance metrics")
@@ -232,12 +232,12 @@ def read_all_training_data_from_db():
 known_request_types = {}
 
 
-def read_all_performance_metrics_from_db():
+def read_all_performance_metrics_from_db(db_path: str):
     response_times = []
 
     begin = datetime.now()
 
-    for row in read_all_training_data_from_db():
+    for row in read_all_training_data_from_db(db_path):
         time_stamp = row.timestamp
 
         weekday = time_stamp.weekday()
