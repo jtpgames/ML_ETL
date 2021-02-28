@@ -8,7 +8,7 @@ from sqlite3 import Error, Connection, Cursor
 from Common import get_date_from_string, read_data_line_from_log_file
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
     read_all_performance_metrics_from_db
-# from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, get_row_from_dataframe_using_nearest_time
+from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, get_row_from_dataframe_using_nearest_time
 
 
 def execute_sql_statement(conn: Connection, statement_sql: str, print_statement: bool = False):
@@ -78,10 +78,11 @@ def construct_insert_training_data_statement(table_name, row: TrainingDataRow):
 
 
 def setup_db() -> Connection:
-    pathToDb = r"db/trainingdata.db"
+    db_directory = r"../../db"
+    pathToDb = db_directory + "/trainingdata.db"
 
-    if not path.exists("db"):
-        mkdir("db")
+    if not path.exists(db_directory):
+        mkdir(db_directory)
 
     db_connection = create_connection(pathToDb)
 
@@ -127,12 +128,12 @@ if __name__ == '__main__':
             # Get data from yesterday for testing purposes
             day_to_get_metrics_from = datetime.now() - timedelta(days=1)
 
-            # resource_usage = loop.run_until_complete(
-            #     get_system_cpu_data(
-            #         loop,
-            #         day_to_get_metrics_from
-            #     )
-            # )
+            resource_usage = loop.run_until_complete(
+                get_system_cpu_data(
+                    loop,
+                    day_to_get_metrics_from
+                )
+            )
 
             counter = 0
             for line in read_data_line_from_log_file(logFile):
