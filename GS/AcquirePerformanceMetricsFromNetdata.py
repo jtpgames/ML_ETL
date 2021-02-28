@@ -17,7 +17,8 @@ _logger = logging.getLogger(__name__)
 async def get_system_cpu_data(loop: AbstractEventLoop, day_to_get_metrics_from: datetime):
     """Get the data from a Netdata instance."""
     async with aiohttp.ClientSession() as session:
-        data = Netdata("fra01.helarion.eu", loop, session, port=19999)
+        # data = Netdata("fra01.helarion.eu", loop, session, port=19999)
+        data = Netdata("192.168.64.6", loop, session, port=19999)
         # # Get data for the CPU
         # await data.get_data("system.cpu")
         # print(json.dumps(data.values, indent=4, sort_keys=True))
@@ -31,8 +32,11 @@ async def get_system_cpu_data(loop: AbstractEventLoop, day_to_get_metrics_from: 
             loop,
             session,
             day_to_get_metrics_from,
-            dimension="system"
+            dimension="user,system"
         )
+
+        dataframe["total"] = dataframe["user"] + dataframe["system"]
+
         print_dataframe(dataframe)
 
         return dataframe
@@ -144,18 +148,30 @@ if __name__ == '__main__':
 
     loop = asyncio.get_event_loop()
 
-    # Get data from yesterday
-    day_to_get_metrics_from = datetime.now() - timedelta(days=1)
+    # Get data for today
+    day_to_get_metrics_from = datetime.now()
 
-    df = loop.run_until_complete(get_system_cpu_data(loop, day_to_get_metrics_from))
+    df: DataFrame = loop.run_until_complete(get_system_cpu_data(loop, day_to_get_metrics_from))
 
     start = datetime.now().timestamp()
+
+    user_cpu_max = df['user'].idxmax()
+    system_cpu_max = df['system'].idxmax()
+
+    print(get_row_from_dataframe_using_nearest_time(
+        df,
+        user_cpu_max
+    ))
+    print(get_row_from_dataframe_using_nearest_time(
+        df,
+        system_cpu_max
+    ))
 
     resource_usage_row = 0
     for n in range(0, 1000):
         resource_usage_row = get_row_from_dataframe_using_nearest_time(
             df,
-            0
+            user_cpu_max
         )
 
     print("Duration ", datetime.now().timestamp() - start)

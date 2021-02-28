@@ -114,19 +114,19 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     # for logFile in sorted(glob("../GS Logs Vision 21.12.20_03.12.21/Conv_2021-*.log")):
-    for logFile in sorted(glob("../LogsToUse/Conv_2021-02-10.log")):
+    for logFile in sorted(glob("../TeaStore Logs/Conv_2021-02-28.log")):
         if not training_data_exists_in_db(dbConnection, logFile):
 
             print("Processing ", logFile)
 
             # TODO Uncomment
-            # day_to_get_metrics_from = datetime.strptime(
-            #     get_date_from_string(logFile),
-            #     "%Y-%m-%d"
-            # )
+            day_to_get_metrics_from = datetime.strptime(
+                get_date_from_string(logFile),
+                "%Y-%m-%d"
+            )
 
             # Get data from yesterday for testing purposes
-            day_to_get_metrics_from = datetime.now() - timedelta(days=1)
+            # day_to_get_metrics_from = datetime.now() - timedelta(days=1)
 
             resource_usage = loop.run_until_complete(
                 get_system_cpu_data(
@@ -141,12 +141,12 @@ if __name__ == '__main__':
 
                 # get resource usage from netdata
                 resource_usage_row = None
-                # resource_usage_row = get_row_from_dataframe_using_nearest_time(
-                #     resource_usage,
-                #     training_data_row.timestamp.timestamp()
-                # )
+                resource_usage_row = get_row_from_dataframe_using_nearest_time(
+                    resource_usage,
+                    training_data_row.timestamp.timestamp()
+                )
                 if resource_usage_row is not None:
-                    training_data_row.system_cpu_usage = resource_usage_row["system"]
+                    training_data_row.system_cpu_usage = resource_usage_row["total"]
                 else:
                     training_data_row.system_cpu_usage = 1
 
