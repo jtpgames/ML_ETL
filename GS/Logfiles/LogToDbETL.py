@@ -119,14 +119,10 @@ if __name__ == '__main__':
 
             print("Processing ", logFile)
 
-            # TODO Uncomment
             day_to_get_metrics_from = datetime.strptime(
                 get_date_from_string(logFile),
                 "%Y-%m-%d"
             )
-
-            # Get data from yesterday for testing purposes
-            # day_to_get_metrics_from = datetime.now() - timedelta(days=1)
 
             resource_usage = loop.run_until_complete(
                 get_system_cpu_data(
@@ -140,7 +136,6 @@ if __name__ == '__main__':
                 training_data_row = TrainingDataRow.from_logfile_entry(line)
 
                 # get resource usage from netdata
-                resource_usage_row = None
                 resource_usage_row = get_row_from_dataframe_using_nearest_time(
                     resource_usage,
                     training_data_row.timestamp.timestamp()
