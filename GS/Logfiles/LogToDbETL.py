@@ -79,7 +79,10 @@ def construct_insert_training_data_statement(table_name, row: TrainingDataRow):
 
 def setup_db() -> Connection:
     db_directory = r"../../db"
-    pathToDb = db_directory + "/trainingdata.db"
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    pathToDb = db_directory + "/trainingdata_{}.db".format(today)
 
     if not path.exists(db_directory):
         mkdir(db_directory)
@@ -114,7 +117,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     # for logFile in sorted(glob("../GS Logs Vision 21.12.20_03.12.21/Conv_2021-*.log")):
-    for logFile in sorted(glob("../TeaStore Logs/Conv_2021-02-28.log")):
+    for logFile in sorted(glob("../TeaStore Logs/Conv_2021-*.log")):
         if not training_data_exists_in_db(dbConnection, logFile):
 
             print("Processing ", logFile)

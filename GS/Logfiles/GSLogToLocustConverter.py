@@ -224,6 +224,7 @@ if __name__ == "__main__":
 
     if args.directory is not None:
         logfiles = glob.glob(join(args.directory, "Merged_*.log"))
+        logfiles = glob.glob(join(args.directory, "teastore-cmd_*.log"))
         logfilesToConvert.extend(logfiles)
 
     # remove duplicates trick

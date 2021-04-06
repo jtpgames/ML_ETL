@@ -18,7 +18,7 @@ async def get_system_cpu_data(loop: AbstractEventLoop, day_to_get_metrics_from: 
     """Get the data from a Netdata instance."""
     async with aiohttp.ClientSession() as session:
         # data = Netdata("fra01.helarion.eu", loop, session, port=19999)
-        data = Netdata("192.168.64.6", loop, session, port=19999)
+        data = Netdata("10.13.62.152", loop, session, port=19999)
         # # Get data for the CPU
         # await data.get_data("system.cpu")
         # print(json.dumps(data.values, indent=4, sort_keys=True))
