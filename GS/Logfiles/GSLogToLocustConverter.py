@@ -5,40 +5,41 @@ from datetime import datetime
 from os.path import join
 from typing import Tuple
 
-from Common import get_timestamp_from_string, contains_timestamp_with_ms, dir_path, get_date_from_string
+from Common import dir_path, get_date_from_string, \
+    get_timestamp_from_line
 
 
 class NumberOfParallelCommandsTracker:
     def __init__(self):
-        self.currentParallelCommands = 0
+        self.current_parallel_commands = 0
 
     def process_log_line(self, line: str):
         if "CMD-START" in line:
-            self.currentParallelCommands += 1
+            self.current_parallel_commands += 1
         elif "CMD-ENDE" in line:
-            self.currentParallelCommands -= 1
+            self.current_parallel_commands -= 1
 
     def reset(self):
-        self.currentParallelCommands = 0
+        self.current_parallel_commands = 0
 
 
 class GSLogConverter:
 
     def __init__(self):
-        self.startedCommands = {}
+        self.started_commands = {}
 
-        self.parallelCommandsTracker = NumberOfParallelCommandsTracker()
+        self.parallel_commands_tracker = NumberOfParallelCommandsTracker()
 
     def read(self, path: str):
 
         from pathlib import Path
-        nameOfLogFile = Path(path).name
-        targetPath = Path(path) \
-            .with_name("Conv_{}".format(get_date_from_string(nameOfLogFile))) \
+        name_of_log_file = Path(path).name
+        target_path = Path(path) \
+            .with_name("Conv_{}".format(get_date_from_string(name_of_log_file))) \
             .with_suffix(".log")
 
-        print("Writing to ", targetPath)
-        targetFile = open(targetPath, mode="w")
+        print("Writing to ", target_path)
+        target_file = open(target_path, mode="w")
 
         print("Reading from %s" % path)
         with open(path) as logfile:
@@ -55,52 +56,52 @@ class GSLogConverter:
                 elif "CMD-ENDE" in line:
                     (tid, end_time) = GSLogConverter.get_threadid_and_timestamp(line)
 
-                    if tid not in self.startedCommands:
+                    if tid not in self.started_commands:
                         print("Command ended without corresponding start log entry")
                         print("in file: ", logfile)
                         print("on line: ", line)
-                        print(self.startedCommands)
+                        print(self.started_commands)
                         if not args.force:
                             input("Press ENTER to continue...")
                         continue
 
-                    self.startedCommands[tid][
-                        "parallelCommandsEnd"] = self.parallelCommandsTracker.currentParallelCommands
+                    self.started_commands[tid][
+                        "parallelCommandsEnd"] = self.parallel_commands_tracker.current_parallel_commands
 
-                    start_time = self.startedCommands[tid]["time"]
+                    start_time = self.started_commands[tid]["time"]
 
                     execution_time_ms = (end_time - start_time).total_seconds() * 1000
 
                     self.write_to_target_log(
                         {
                             "receivedAt": end_time,
-                            "cmd": self.startedCommands[tid]["cmd"],
-                            "parallelRequestsStart": self.startedCommands[tid]["parallelCommandsStart"],
-                            "parallelRequestsEnd": self.startedCommands[tid]["parallelCommandsEnd"],
-                            "parallelCommandsFinished": self.startedCommands[tid]["parallelCommandsFinished"],
+                            "cmd": self.started_commands[tid]["cmd"],
+                            "parallelRequestsStart": self.started_commands[tid]["parallelCommandsStart"],
+                            "parallelRequestsEnd": self.started_commands[tid]["parallelCommandsEnd"],
+                            "parallelCommandsFinished": self.started_commands[tid]["parallelCommandsFinished"],
                             "time": int(execution_time_ms)
                         },
-                        targetFile
+                        target_file
                     )
 
                     # thread <tid> finished his command,
                     # increment counter of other commands
-                    for cmd in self.startedCommands.values():
+                    for cmd in self.started_commands.values():
                         cmd["parallelCommandsFinished"] = cmd["parallelCommandsFinished"] + 1
 
                     # ...remove from startedCommands
-                    self.startedCommands.pop(tid)
+                    self.started_commands.pop(tid)
 
-                self.parallelCommandsTracker.process_log_line(line)
+                self.parallel_commands_tracker.process_log_line(line)
 
-        if len(self.startedCommands) > 0:
+        if len(self.started_commands) > 0:
             print("Commands remaining")
-            print(self.startedCommands)
+            print(self.started_commands)
             if not args.force:
                 input("Press ENTER to continue...")
-        self.startedCommands.clear()
-        self.parallelCommandsTracker.reset()
-        targetFile.close()
+        self.started_commands.clear()
+        self.parallel_commands_tracker.reset()
+        target_file.close()
 
     @staticmethod
     def get_threadid_from_line(line: str) -> int:
@@ -113,35 +114,23 @@ class GSLogConverter:
 
     @staticmethod
     def get_threadid_from_line_optimized(line: str) -> int:
-        foundLeftBracket = False
-        tidString = []
+        found_left_bracket = False
+        tid_string = []
 
         for c in line:
             if c == '[':
-                foundLeftBracket = True
+                found_left_bracket = True
                 continue
             elif c == ']':
                 break
 
-            if foundLeftBracket:
-                tidString.append(c)
+            if found_left_bracket:
+                tid_string.append(c)
 
-        tidString = ''.join(tidString)
-        tid = int(tidString)
+        tid_string = ''.join(tid_string)
+        tid = int(tid_string)
 
         return tid
-
-    @staticmethod
-    def get_timestamp_from_line(line: str) -> datetime:
-        if contains_timestamp_with_ms(line):
-            format_string = '%Y-%m-%d %H:%M:%S.%f'
-        else:
-            format_string = '%Y-%m-%d %H:%M:%S'
-
-        return datetime.strptime(
-            get_timestamp_from_string(line),
-            format_string
-        )
 
     @staticmethod
     def write_to_target_log(data, target_file):
@@ -166,7 +155,7 @@ class GSLogConverter:
 
         tid = GSLogConverter.get_threadid_from_line_optimized(line)
 
-        timestamp = GSLogConverter.get_timestamp_from_line(line)
+        timestamp = get_timestamp_from_line(line)
 
         return tid, timestamp
 
@@ -174,16 +163,16 @@ class GSLogConverter:
 
         tid, timestamp = GSLogConverter.get_threadid_and_timestamp(line)
 
-        if tid in self.startedCommands.keys():
-            print(tid, " already processes another command", self.startedCommands[tid]["cmd"])
+        if tid in self.started_commands.keys():
+            print(tid, " already processes another command", self.started_commands[tid]["cmd"])
             print("new line ", line)
             if not args.force:
                 input("Press ENTER to continue...")
 
-        self.startedCommands[tid] = {
+        self.started_commands[tid] = {
             "time": timestamp,
             "cmd": None,
-            "parallelCommandsStart": self.parallelCommandsTracker.currentParallelCommands,
+            "parallelCommandsStart": self.parallel_commands_tracker.current_parallel_commands,
             "parallelCommandsEnd": 0,
             "parallelCommandsFinished": 0
         }
@@ -196,7 +185,7 @@ class GSLogConverter:
         else:
             cmd = "ID_Unknown"
 
-        self.startedCommands[lastTid]["cmd"] = cmd
+        self.started_commands[lastTid]["cmd"] = cmd
 
 
 if __name__ == "__main__":
@@ -224,7 +213,7 @@ if __name__ == "__main__":
 
     if args.directory is not None:
         logfiles = glob.glob(join(args.directory, "Merged_*.log"))
-        logfiles = glob.glob(join(args.directory, "teastore-cmd_*.log"))
+        logfiles.extend(glob.glob(join(args.directory, "teastore-cmd_*.log")))
         logfilesToConvert.extend(logfiles)
 
     # remove duplicates trick

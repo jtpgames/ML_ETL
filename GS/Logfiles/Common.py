@@ -18,6 +18,18 @@ def get_timestamp_from_string(line: str):
     return search(r"(?<=\])\s*\d*-\d*-\d*\s\d*:\d*:\d*\.?\d*", line).group().strip()
 
 
+def get_timestamp_from_line(line: str) -> datetime:
+    if contains_timestamp_with_ms(line):
+        format_string = '%Y-%m-%d %H:%M:%S.%f'
+    else:
+        format_string = '%Y-%m-%d %H:%M:%S'
+
+    return datetime.strptime(
+        get_timestamp_from_string(line),
+        format_string
+    )
+
+
 def dir_path(path):
     if os.path.isdir(path):
         return path
