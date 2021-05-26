@@ -10,14 +10,18 @@ from Common import dir_path, get_date_from_string, get_timestamp_from_line
 
 class RequestsPerSecondTracker:
     def __init__(self, source_file_path: str):
-        self._requests_counter = 0
-        self._start: Optional[datetime] = None
+        self._requests_per_second_counter = 0
+        self._requests_per_second_start_time: Optional[datetime] = None
+
+        self._requests_per_hour_counter = 0
+        self._requests_per_hour_start_time: Optional[datetime] = None
+
         self._tracked_data = []
 
         from pathlib import Path
         name_of_log_file = Path(source_file_path).name
         target_path = Path(source_file_path) \
-            .with_name("Requests_per_second_{}".format(get_date_from_string(name_of_log_file))) \
+            .with_name("Requests_per_time_unit_{}".format(get_date_from_string(name_of_log_file))) \
             .with_suffix(".log")
 
         print("Writing to ", target_path)
@@ -29,22 +33,47 @@ class RequestsPerSecondTracker:
 
         timestamp_of_request = get_timestamp_from_line(line)
 
-        if self._start is None:
-            self._start = timestamp_of_request
+        if self._requests_per_second_start_time is None:
+            self._requests_per_second_start_time = timestamp_of_request
 
-        difference = (timestamp_of_request - self._start)
+        if self._requests_per_hour_start_time is None:
+            self._requests_per_hour_start_time = timestamp_of_request
 
+        difference = (timestamp_of_request - self._requests_per_second_start_time)
         if difference.total_seconds() > 1:
-            timestamp = self._start.strftime('%Y-%m-%d %H:%M:%S')
+            self._write_requests_per_second_into_log(timestamp_of_request)
 
-            self._tracked_data.append({"timestamp": self._start, "rps": self._requests_counter})
-            self._target_file.write(f"{timestamp}\tRSP: {self._requests_counter}/s\n")
-            self._requests_counter = 0
-            self._start = timestamp_of_request
+        difference = (timestamp_of_request - self._requests_per_hour_start_time)
+        if difference.total_seconds() > 3600:
+            self._write_requests_per_hour_into_log(timestamp_of_request)
 
-        self._requests_counter += 1
+        self._requests_per_second_counter += 1
+        self._requests_per_hour_counter += 1
+
+    def _write_requests_per_second_into_log(self, timestamp_of_last_request):
+        timestamp = self._requests_per_second_start_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        self._tracked_data.append(
+            {"timestamp": self._requests_per_second_start_time, "rps": self._requests_per_second_counter})
+        self._target_file.write(f"{timestamp}\tRPS: {self._requests_per_second_counter}/s\n")
+        self._requests_per_second_counter = 0
+        self._requests_per_second_start_time = timestamp_of_last_request
+
+    def _write_requests_per_hour_into_log(self, timestamp_of_last_request):
+        timestamp = self._requests_per_hour_start_time.strftime('%Y-%m-%d %H:%M:%S')
+
+        self._tracked_data.append(
+            {"timestamp": self._requests_per_hour_start_time, "rph": self._requests_per_hour_counter})
+        self._target_file.write(f"{timestamp}\tRPH: {self._requests_per_hour_counter}/h\n")
+        self._requests_per_hour_counter = 0
+        self._requests_per_hour_start_time = timestamp_of_last_request
 
     def close(self):
+        self._write_requests_per_second_into_log(None)
+        self._write_requests_per_hour_into_log(None)
+
+        self._target_file.write(f"Total count: {len(self._tracked_data)}\n")
+
         self._target_file.close()
 
         from pandas import DataFrame
