@@ -1,4 +1,5 @@
 import asyncio
+import math
 from os import path, mkdir
 import sqlite3
 from datetime import datetime, timedelta
@@ -37,8 +38,7 @@ def construct_create_training_data_table_statement(table_name):
         `number_of_parallel_requests_finished` SMALLINT unsigned NOT NULL,
         `request_type` VARCHAR NOT NULL,
         `system_cpu_usage` FLOAT NOT NULL,
-        `request_execution_time_ms` INT unsigned NOT NULL,
-        PRIMARY KEY (`timestamp`)
+        `request_execution_time_ms` INT unsigned NOT NULL
     );
     """
 
@@ -102,6 +102,16 @@ def setup_db() -> Connection:
         db_connection,
         construct_create_index_statement(
             "gs_training_data",
+            "idx_timestamp",
+            "timestamp"
+        ),
+        True
+    )
+
+    execute_sql_statement(
+        db_connection,
+        construct_create_index_statement(
+            "gs_training_data",
             "idx_request_type",
             "request_type"
         ),
@@ -116,8 +126,7 @@ if __name__ == '__main__':
 
     loop = asyncio.get_event_loop()
 
-    # for logFile in sorted(glob("../GS Logs Vision 21.12.20_03.12.21/Conv_2021-*.log")):
-    for logFile in sorted(glob("../TeaStore Logs/Conv_2021-*.log")):
+    for logFile in sorted(glob("../../TeaStoreLogs/Conv_2021-*.log")):
         if not training_data_exists_in_db(dbConnection, logFile):
 
             print("Processing ", logFile)
@@ -144,7 +153,10 @@ if __name__ == '__main__':
                     training_data_row.timestamp.timestamp()
                 )
                 if resource_usage_row is not None:
-                    training_data_row.system_cpu_usage = resource_usage_row["total"]
+                    if math.isnan(resource_usage_row["total"]):
+                        training_data_row.system_cpu_usage = 0
+                    else:
+                        training_data_row.system_cpu_usage = resource_usage_row["total"]
                 else:
                     training_data_row.system_cpu_usage = 1
 
