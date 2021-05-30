@@ -92,9 +92,9 @@ def rps_tracker(path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert log files '
-                                                 'of the GS legacy system '
-                                                 'to our custom locust log file format.')
+    parser = argparse.ArgumentParser(description='Extracts the workload of a system from its log files '
+                                                 'and writes the workload to a series of files for '
+                                                 'later processing.')
     parser.add_argument('--files', '-f',
                         type=str,
                         nargs='+',
