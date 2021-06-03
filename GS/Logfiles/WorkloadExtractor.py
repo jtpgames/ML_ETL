@@ -17,6 +17,7 @@ class RequestsPerSecondTracker:
         self._requests_per_hour_start_time: Optional[datetime] = None
 
         self._tracked_data = []
+        self._total_amount_of_requests = 0
 
         from pathlib import Path
         name_of_log_file = Path(source_file_path).name
@@ -30,6 +31,8 @@ class RequestsPerSecondTracker:
     def process_log_line(self, line: str):
         if "CMD-START" not in line:
             return
+
+        self._total_amount_of_requests += 1
 
         timestamp_of_request = get_timestamp_from_line(line)
 
@@ -72,14 +75,14 @@ class RequestsPerSecondTracker:
         self._write_requests_per_second_into_log(None)
         self._write_requests_per_hour_into_log(None)
 
-        self._target_file.write(f"Total count: {len(self._tracked_data)}\n")
+        self._target_file.write(f"Total count: {self._total_amount_of_requests}\n")
 
         self._target_file.close()
 
-        from pandas import DataFrame
-        df = DataFrame.from_records(self._tracked_data)
-
-        print(df)
+        # from pandas import DataFrame
+        # df = DataFrame.from_records(self._tracked_data)
+        #
+        # print(df)
 
 
 @contextlib.contextmanager
