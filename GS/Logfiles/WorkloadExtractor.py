@@ -2,10 +2,42 @@ import argparse
 import contextlib
 import datetime
 import glob
+import re
 from os.path import join
 from typing import Optional
 
 from Common import dir_path, get_date_from_string, get_timestamp_from_line
+
+
+class RequestNamesTracker:
+    def __init__(self, source_file_path: str):
+        self._known_request_names = set()
+
+        from pathlib import Path
+        target_path = Path(source_file_path) \
+            .with_name("Request_Names") \
+            .with_suffix(".log")
+
+        print("Writing to ", target_path)
+        self._target_file = open(target_path, mode="w")
+
+    def process_log_line(self, line: str):
+        if "CMD-START" not in line:
+            return
+
+        s = re.search(r"ID_\w+", line)
+        if s is None:
+            return
+
+        cmd = s.group()
+
+        if cmd not in self._known_request_names:
+            self._known_request_names.add(cmd)
+
+            self._target_file.write(f"{cmd}\n")
+
+    def close(self):
+        self._target_file.close()
 
 
 class RequestsPerSecondTracker:
@@ -95,13 +127,13 @@ def rps_tracker(path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Extracts the workload of a system from its log files '
+    parser = argparse.ArgumentParser(description='Extracts the workload of a system from its command log files '
                                                  'and writes the workload to a series of files for '
                                                  'later processing.')
     parser.add_argument('--files', '-f',
                         type=str,
                         nargs='+',
-                        help='the paths to the ARS log files')
+                        help='the paths to the log files')
     parser.add_argument('--directory', '-d',
                         type=dir_path,
                         help='the directory the log files are located in')
@@ -124,6 +156,8 @@ if __name__ == "__main__":
 
     print("Logs to convert: " + str(logfilesToConvert))
 
+    request_names_tracker = RequestNamesTracker(logfilesToConvert[0])
+
     for path in logfilesToConvert:
         print("Reading from %s" % path)
         with open(path) as logfile, rps_tracker(path) as requests_per_second_tracker:
@@ -135,3 +169,6 @@ if __name__ == "__main__":
                     print("Processed {} entries".format(counter))
 
                 requests_per_second_tracker.process_log_line(line)
+                request_names_tracker.process_log_line(line)
+
+    request_names_tracker.close()
