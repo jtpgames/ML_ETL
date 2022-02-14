@@ -21,11 +21,14 @@ def fix_log(path: str):
     2. Fixes line breaks within one log entry and merges those lines together
     :param path: Path to the log file
     """
-    if "WSCmd" not in path:
-        print("WSCmd should be part of the filename")
+    if "Worker-cmd" not in path and "WSCmd" not in path:
+        print("Either WSCmd or Worker-cmd should be part of the filename")
         return
 
-    target_path = path.replace("WSCmd", "WSCmd_f")
+    if "Worker-cmd" in path:
+        target_path = path.replace("Worker-cmd", "WSCmd_f")
+    else:
+        target_path = path.replace("WSCmd", "WSCmd_f")
 
     print("Converting ", path)
     with open(path, encoding="latin-1") as logfile:
@@ -69,7 +72,8 @@ if __name__ == "__main__":
     logfilesToConvert = args.files if args.files is not None else []
 
     if args.directory is not None:
-        logfiles = glob.glob(join(args.directory, "WSCmd*.log"))
+        logfiles = glob.glob(join(args.directory, "Worker-cmd*.log"))
+        logfiles.extend(glob.glob(join(args.directory, "WSCmd*.log")))
         logfilesToConvert.extend(logfiles)
 
     print("Logs to convert: " + str(logfilesToConvert))
