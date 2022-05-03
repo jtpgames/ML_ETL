@@ -51,6 +51,9 @@ class RequestsPerSecondTracker:
         self._tracked_data = []
         self._total_amount_of_requests = 0
 
+        # GS-specific: Ignore the requests that are send to the ARS by the alarm devices
+        self.IGNORE_REQUESTS = {'ID_REQ_KC_STORE7D3BPACKET'}
+
         from pathlib import Path
         name_of_log_file = Path(source_file_path).name
         target_path = Path(source_file_path) \
@@ -63,6 +66,10 @@ class RequestsPerSecondTracker:
     def process_log_line(self, line: str):
         if "CMD-START" not in line:
             return
+
+        for request_to_ignore in self.IGNORE_REQUESTS:
+            if request_to_ignore in line:
+                return
 
         self._total_amount_of_requests += 1
 
@@ -158,6 +165,8 @@ if __name__ == "__main__":
 
     request_names_tracker = RequestNamesTracker(logfilesToConvert[0])
 
+    line_counter = 0
+
     for path in logfilesToConvert:
         print("Reading from %s" % path)
         with open(path) as logfile, rps_tracker(path) as requests_per_second_tracker:
@@ -171,4 +180,8 @@ if __name__ == "__main__":
                 requests_per_second_tracker.process_log_line(line)
                 request_names_tracker.process_log_line(line)
 
+            line_counter += counter
+
     request_names_tracker.close()
+
+    print(f"Total lines processed: {line_counter}")
