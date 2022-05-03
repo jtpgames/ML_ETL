@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from glob import glob
 from sqlite3 import Error, Connection, Cursor
 
+import typer
+
 from Common import get_date_from_string, read_data_line_from_log_file
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
     read_all_performance_metrics_from_db
@@ -83,6 +85,7 @@ def setup_db() -> Connection:
     today = datetime.now().strftime("%Y-%m-%d")
 
     pathToDb = db_directory + "/trainingdata_{}.db".format(today)
+    # pathToDb = db_directory + "/trainingdata_cumulative.db"
 
     if not path.exists(db_directory):
         mkdir(db_directory)
@@ -121,18 +124,23 @@ def setup_db() -> Connection:
     return db_connection
 
 
-if __name__ == '__main__':
-    dbConnection = setup_db()
+def main(
+        directory: str = typer.Argument(
+            ...,
+            help="The directory the log files are located in"
+        ),
+):
+    db_connection = setup_db()
 
     loop = asyncio.get_event_loop()
 
-    for logFile in sorted(glob("../../TeaStoreLogs/Conv_2021-*.log")):
-        if not training_data_exists_in_db(dbConnection, logFile):
+    for log_file in sorted(glob(f"{directory}/Conv_*.log")):
+        if not training_data_exists_in_db(db_connection, log_file):
 
-            print("Processing ", logFile)
+            print("Processing ", log_file)
 
             day_to_get_metrics_from = datetime.strptime(
-                get_date_from_string(logFile),
+                get_date_from_string(log_file),
                 "%Y-%m-%d"
             )
 
@@ -144,7 +152,7 @@ if __name__ == '__main__':
             )
 
             counter = 0
-            for line in read_data_line_from_log_file(logFile):
+            for line in read_data_line_from_log_file(log_file):
                 training_data_row = TrainingDataRow.from_logfile_entry(line)
 
                 # get resource usage from netdata
@@ -161,7 +169,7 @@ if __name__ == '__main__':
                     training_data_row.system_cpu_usage = 1
 
                 execute_sql_statement(
-                    dbConnection,
+                    db_connection,
                     construct_insert_training_data_statement(
                         "gs_training_data",
                         training_data_row
@@ -172,9 +180,13 @@ if __name__ == '__main__':
                 if counter % 10000 == 0:
                     print("Processed {} entries".format(counter))
 
-            dbConnection.commit()
+            db_connection.commit()
             print("Committed")
         else:
-            print("Skipping ", logFile)
+            print("Skipping ", log_file)
 
-    dbConnection.close()
+    db_connection.close()
+
+
+if __name__ == "__main__":
+    typer.run(main)
