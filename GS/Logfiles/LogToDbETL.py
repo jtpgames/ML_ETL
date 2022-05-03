@@ -11,7 +11,6 @@ import typer
 from Common import get_date_from_string, read_data_line_from_log_file
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
     read_all_performance_metrics_from_db
-from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, get_row_from_dataframe_using_nearest_time
 
 
 def execute_sql_statement(conn: Connection, statement_sql: str, print_statement: bool = False):
@@ -129,7 +128,16 @@ def main(
             ...,
             help="The directory the log files are located in"
         ),
+        query_netdata: bool = typer.Option(
+            False,
+            "--netdata", "-n",
+            help="Query a netdata instance for performance metrics"
+        )
 ):
+    if query_netdata:
+        from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, \
+            get_row_from_dataframe_using_nearest_time
+
     db_connection = setup_db()
 
     loop = asyncio.get_event_loop()
@@ -144,22 +152,25 @@ def main(
                 "%Y-%m-%d"
             )
 
-            resource_usage = loop.run_until_complete(
-                get_system_cpu_data(
-                    loop,
-                    day_to_get_metrics_from
+            if query_netdata:
+                resource_usage = loop.run_until_complete(
+                    get_system_cpu_data(
+                        loop,
+                        day_to_get_metrics_from
+                    )
                 )
-            )
 
             counter = 0
             for line in read_data_line_from_log_file(log_file):
                 training_data_row = TrainingDataRow.from_logfile_entry(line)
 
-                # get resource usage from netdata
-                resource_usage_row = get_row_from_dataframe_using_nearest_time(
-                    resource_usage,
-                    training_data_row.timestamp.timestamp()
-                )
+                resource_usage_row = None
+                if query_netdata:
+                    # get resource usage from netdata
+                    resource_usage_row = get_row_from_dataframe_using_nearest_time(
+                        resource_usage,
+                        training_data_row.timestamp.timestamp()
+                    )
                 if resource_usage_row is not None:
                     if math.isnan(resource_usage_row["total"]):
                         training_data_row.system_cpu_usage = 0
