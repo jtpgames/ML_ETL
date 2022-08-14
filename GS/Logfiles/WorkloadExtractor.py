@@ -9,6 +9,34 @@ from typing import Optional
 from Common import dir_path, get_date_from_string, get_timestamp_from_line
 
 
+class RequestFilter:
+    def __init__(self, source_file_path: str, request_type: str):
+        """
+        :param source_file_path: The path to a command log file.
+        :param request_type: The type of request to include in the output. All other request types are omitted.
+        """
+
+        from pathlib import Path
+        target_path = Path(source_file_path) \
+            .with_name("Request_Statistics") \
+            .with_suffix(".log")
+
+        print("Writing to ", target_path)
+        self._target_file = open(target_path, mode="w")
+
+        self._request_type = request_type
+
+    def process_log_line(self, line: str):
+        s = re.search(r"ID_\w+", line)
+        if s is None:
+            return
+
+        cmd = s.group()
+
+        if cmd == self._request_type:
+            self._target_file.write(f"{line}\n")
+
+
 class RequestNamesTracker:
     def __init__(self, source_file_path: str):
         self._known_request_names = set()
@@ -154,7 +182,7 @@ if __name__ == "__main__":
     logfilesToConvert = args.files if args.files is not None else []
 
     if args.directory is not None:
-        logfiles = glob.glob(join(args.directory, "Merged_*.log"))
+        logfiles = glob.glob(join(args.directory, "*-Merged_*.log"))
         logfiles.extend(glob.glob(join(args.directory, "teastore-cmd_*.log")))
         logfilesToConvert.extend(logfiles)
 
@@ -164,6 +192,8 @@ if __name__ == "__main__":
     print("Logs to convert: " + str(logfilesToConvert))
 
     request_names_tracker = RequestNamesTracker(logfilesToConvert[0])
+
+    request_statistics = RequestFilter(logfilesToConvert[0], 'ID_REQ_KC_STORE7D3BPACKET')
 
     line_counter = 0
 
@@ -179,6 +209,7 @@ if __name__ == "__main__":
 
                 requests_per_second_tracker.process_log_line(line)
                 request_names_tracker.process_log_line(line)
+                request_statistics.process_log_line(line)
 
             line_counter += counter
 
