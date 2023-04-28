@@ -1,26 +1,64 @@
 import argparse
 import glob
+import json
 import re
-from datetime import datetime
+from datetime import datetime, time
 from os.path import join
-from typing import Tuple
+from typing import Tuple, TextIO
 
 from Common import dir_path, get_date_from_string, \
     get_timestamp_from_line
 
 
+class NumberOfParallelCommandsTrackerEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, NumberOfParallelCommandsTracker):
+            return {
+                "requests_per_second": {str(k): v for k, v in obj.requests_per_second.items()},
+                "requests_per_minute": {str(k): v for k, v in obj.requests_per_minute.items()},
+            }
+        return super().default(obj)
+
+
 class NumberOfParallelCommandsTracker:
     def __init__(self):
         self.current_parallel_commands = 0
+        self.requests_per_second: dict[time, int] = dict()
+        self.requests_per_minute: dict[time, int] = dict()
 
     def process_log_line(self, line: str):
         if "CMD-START" in line:
             self.current_parallel_commands += 1
+            timestamp = get_timestamp_from_line(line)
+            time_of_request = timestamp.time()
+            time_of_request = time_of_request.replace(time_of_request.hour, time_of_request.minute, time_of_request.second, 0)
+            if time_of_request not in self.requests_per_second:
+                self.requests_per_second[time_of_request] = 0
+            self.requests_per_second[time_of_request] += 1
+            time_of_request = time_of_request.replace(time_of_request.hour, time_of_request.minute, 0)
+            if time_of_request not in self.requests_per_minute:
+                self.requests_per_minute[time_of_request] = 0
+            self.requests_per_minute[time_of_request] += 1
         elif "CMD-ENDE" in line:
             self.current_parallel_commands -= 1
 
+    def get_requests_per_second_for(self, timestamp: datetime):
+        time_of_request = timestamp.time()
+        time_of_request = time_of_request.replace(time_of_request.hour, time_of_request.minute, time_of_request.second, 0)
+        return self.requests_per_second[time_of_request]
+
+    def get_requests_per_minute_for(self, timestamp: datetime):
+        time_of_request = timestamp.time()
+        time_of_request = time_of_request.replace(time_of_request.hour, time_of_request.minute, 0, 0)
+        return self.requests_per_minute[time_of_request]
+
     def reset(self):
         self.current_parallel_commands = 0
+        self.requests_per_second: dict[time, int] = dict()
+        self.requests_per_minute: dict[time, int] = dict()
+
+    def to_json(self, file: TextIO):
+        return json.dump(self, file, cls=NumberOfParallelCommandsTrackerEncoder, indent=2)
 
 
 class GSLogConverter:
@@ -100,6 +138,14 @@ class GSLogConverter:
             if not args.force:
                 input("Press ENTER to continue...")
         self.started_commands.clear()
+
+        target_path = Path(path) \
+            .with_name("request_statistics_{}".format(get_date_from_string(name_of_log_file))) \
+            .with_suffix(".json")
+
+        with open(target_path, "w") as write_file:
+            self.parallel_commands_tracker.to_json(write_file)
+
         self.parallel_commands_tracker.reset()
         target_file.close()
 
