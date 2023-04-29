@@ -419,4 +419,3 @@ def read_all_performance_metrics_from_db(db_path: str):
     # print("Number of response time outliers: %i" % len(detect_response_time_outliers(df)))
 
     return df
-
