@@ -1,16 +1,23 @@
 import asyncio
+import json
 import math
 from os import path, mkdir
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from glob import glob
+from pathlib import Path
 from sqlite3 import Error, Connection, Cursor
+from typing import Optional, Union
 
 import typer
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from Common import get_date_from_string, read_data_line_from_log_file
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
-    read_all_performance_metrics_from_db
+    read_all_performance_metrics_from_db, create_connection_using_sqlalchemy, create_training_data_table, \
+    training_data_exists_in_db_using_sqlalchemy, insert_training_data, read_all_training_data_from_db_using_sqlalchemy
+from GS.Logfiles.GSLogToLocustConverter import NumberOfParallelCommandsTracker
 
 
 def execute_sql_statement(conn: Connection, statement_sql: str, print_statement: bool = False):
@@ -123,6 +130,25 @@ def setup_db() -> Connection:
     return db_connection
 
 
+def setup_db_using_sqlalchemy() -> Engine:
+    db_directory = r"../../db"
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    pathToDb = db_directory + "/trainingdata_{}.db".format(today)
+
+    if not path.exists(db_directory):
+        mkdir(db_directory)
+
+    db_connection = create_connection_using_sqlalchemy(pathToDb, True)
+    if db_connection is None:
+        exit(1)
+
+    create_training_data_table(db_connection)
+
+    return db_connection
+
+
 def main(
         directory: str = typer.Argument(
             ...,
@@ -132,18 +158,26 @@ def main(
             False,
             "--netdata", "-n",
             help="Query a netdata instance for performance metrics"
+        ),
+        enrich_with_request_statistics: bool = typer.Option(
+            True,
+            "--enrich", "-e",
+            help="Enrich training data with request statistics, if available"
         )
 ):
     if query_netdata:
         from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, \
             get_row_from_dataframe_using_nearest_time
 
-    db_connection = setup_db()
+    # db_connection = setup_db()
+    db_connection = setup_db_using_sqlalchemy()
+    db_connection = Session(db_connection)
 
     loop = asyncio.get_event_loop()
 
     for log_file in sorted(glob(f"{directory}/Conv_*.log")):
-        if not training_data_exists_in_db(db_connection, log_file):
+        # if not training_data_exists_in_db(db_connection, log_file):
+        if not training_data_exists_in_db_using_sqlalchemy(db_connection, log_file):
 
             print("Processing ", log_file)
 
@@ -160,6 +194,20 @@ def main(
                     )
                 )
 
+            tracker: Optional[NumberOfParallelCommandsTracker] = None
+            if enrich_with_request_statistics:
+                target_path = Path(log_file) \
+                    .with_name("request_statistics_{}".format(day_to_get_metrics_from.date())) \
+                    .with_suffix(".json")
+
+                if target_path.exists():
+                    with open(target_path, "r") as write_file:
+                        request_statistics = json.load(write_file)
+                        tracker = NumberOfParallelCommandsTracker()
+                        tracker.requests_per_second = {time.fromisoformat(key): value for key, value in request_statistics['requests_per_second'].items()}
+                        tracker.requests_per_minute = {time.fromisoformat(key): value for key, value in request_statistics['requests_per_minute'].items()}
+
+            training_data_rows: list[TrainingDataRow] = list()
             counter = 0
             for line in read_data_line_from_log_file(log_file):
                 training_data_row = TrainingDataRow.from_logfile_entry(line)
@@ -179,18 +227,24 @@ def main(
                 else:
                     training_data_row.system_cpu_usage = 1
 
-                execute_sql_statement(
-                    db_connection,
-                    construct_insert_training_data_statement(
-                        "gs_training_data",
-                        training_data_row
-                    )
-                )
+                if tracker is not None:
+                    training_data_row.requests_per_second = tracker.get_requests_per_second_for(training_data_row.timestamp)
+                    training_data_row.requests_per_minute = tracker.get_requests_per_minute_for(training_data_row.timestamp)
+
+                # execute_sql_statement(
+                #     db_connection,
+                #     construct_insert_training_data_statement(
+                #         "gs_training_data",
+                #         training_data_row
+                #     )
+                # )
+                training_data_rows.append(training_data_row)
 
                 counter = counter + 1
                 if counter % 10000 == 0:
                     print("Processed {} entries".format(counter))
 
+            insert_training_data(db_connection, training_data_rows)
             db_connection.commit()
             print("Committed")
         else:

@@ -45,11 +45,15 @@ class NumberOfParallelCommandsTracker:
     def get_requests_per_second_for(self, timestamp: datetime):
         time_of_request = timestamp.time()
         time_of_request = time_of_request.replace(time_of_request.hour, time_of_request.minute, time_of_request.second, 0)
+        if time_of_request not in self.requests_per_second:
+            return 0
         return self.requests_per_second[time_of_request]
 
     def get_requests_per_minute_for(self, timestamp: datetime):
         time_of_request = timestamp.time()
         time_of_request = time_of_request.replace(time_of_request.hour, time_of_request.minute, 0, 0)
+        if time_of_request not in self.requests_per_minute:
+            return 0
         return self.requests_per_minute[time_of_request]
 
     def reset(self):
