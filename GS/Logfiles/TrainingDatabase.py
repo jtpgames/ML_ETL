@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import Optional, Iterable
 
-from sqlalchemy import create_engine, String, Float, TIMESTAMP, Engine, and_, func, select, insert
+from sqlalchemy import create_engine, String, Float, TIMESTAMP, Engine, and_, func, select, insert, between
 from sqlalchemy.dialects.mysql import SMALLINT, INTEGER
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, Session
 
-from Common import get_date_from_string
+from StringUtils import get_date_from_string
 
 
 class Base(DeclarativeBase):
@@ -217,3 +217,20 @@ def read_all_training_data_from_db_using_sqlalchemy(db_path: str) -> Iterable[Tr
 
     for row in session.scalars(stmt):
         yield TrainingDataRow(row)
+
+
+def read_training_data_from_db_between_using_sqlalchemy(db_path: str, begin: str, end: str) -> Iterable[TrainingDataRow]:
+    db_connection = create_connection_using_sqlalchemy(db_path, True)
+    if db_connection is None:
+        print("Could not read performance metrics")
+        exit(1)
+
+    with Session(db_connection) as session:
+        results = session.query(TrainingDataEntity).filter(between(
+            func.strftime('%Y %m %d', TrainingDataEntity.timestamp),
+            begin,
+            end)
+        ).all()
+
+        for row in results:
+            yield row

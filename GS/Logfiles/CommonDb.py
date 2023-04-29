@@ -5,7 +5,7 @@ from typing import Iterable
 
 from pandas import DataFrame
 
-from GS.Logfiles.Common import get_date_from_string
+from GS.Logfiles.StringUtils import get_date_from_string
 from GS.Logfiles.TrainingDatabase import TrainingDataRow, read_all_training_data_from_db_using_sqlalchemy
 
 

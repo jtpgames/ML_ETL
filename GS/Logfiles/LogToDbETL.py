@@ -13,7 +13,8 @@ import typer
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
-from Common import get_date_from_string, read_data_line_from_log_file
+from Common import read_data_line_from_log_file
+from StringUtils import get_date_from_string
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
     read_all_performance_metrics_from_db, read_all_training_data_from_db_using_sqlalchemy
 from TrainingDatabase import create_connection_using_sqlalchemy, create_training_data_table, \
