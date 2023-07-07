@@ -10,6 +10,7 @@ from sqlite3 import Error, Connection, Cursor
 from typing import Optional, Union
 
 import typer
+from rast_common.SwitchAggFlowStats import SwitchAggFlowStats, SwitchAggFlowStatsDecoder
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -197,17 +198,10 @@ def main(
                 )
 
             tracker: Optional[NumberOfParallelCommandsTracker] = None
+            flow_stats: Optional[SwitchAggFlowStats] = None
             if enrich_with_statistics:
-                target_path = Path(log_file) \
-                    .with_name("request_statistics_{}".format(day_to_get_metrics_from.date())) \
-                    .with_suffix(".json")
-
-                if target_path.exists():
-                    with open(target_path, "r") as write_file:
-                        request_statistics = json.load(write_file)
-                        tracker = NumberOfParallelCommandsTracker()
-                        tracker.requests_per_second = {time.fromisoformat(key): value for key, value in request_statistics['requests_per_second'].items()}
-                        tracker.requests_per_minute = {time.fromisoformat(key): value for key, value in request_statistics['requests_per_minute'].items()}
+                tracker = create_and_initialize_tracker(day_to_get_metrics_from, log_file)
+                flow_stats = create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file)
 
             training_data_rows: list[TrainingDataRow] = list()
             counter = 0
@@ -233,6 +227,9 @@ def main(
                     training_data_row.requests_per_second = tracker.get_requests_per_second_for(training_data_row.timestamp)
                     training_data_row.requests_per_minute = tracker.get_requests_per_minute_for(training_data_row.timestamp)
 
+                if flow_stats is not None:
+                    print(flow_stats.get_bytes_per_second_for(training_data_row.timestamp))
+
                 # execute_sql_statement(
                 #     db_connection,
                 #     construct_insert_training_data_statement(
@@ -253,6 +250,41 @@ def main(
             print("Skipping ", log_file)
 
     db_connection.close()
+
+
+def create_and_initialize_tracker(day_to_get_metrics_from, log_file):
+    target_path = Path(log_file) \
+        .with_name("request_statistics_{}".format(day_to_get_metrics_from.date())) \
+        .with_suffix(".json")
+
+    if not target_path.exists():
+        return None
+
+    with open(target_path, "r") as f:
+        request_statistics = json.load(f)
+        tracker = NumberOfParallelCommandsTracker()
+        tracker.requests_per_second = {time.fromisoformat(key): value for key, value in
+                                       request_statistics['requests_per_second'].items()}
+        tracker.requests_per_minute = {time.fromisoformat(key): value for key, value in
+                                       request_statistics['requests_per_minute'].items()}
+    return tracker
+
+
+def create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file) -> Optional[SwitchAggFlowStats]:
+    target_path = Path(log_file) \
+        .with_name("switch_flow_stats_{}".format(day_to_get_metrics_from.date())) \
+        .with_suffix(".json")
+
+    if not target_path.exists():
+        return None
+
+    with open(target_path, "r") as f:
+        flow_stats_dict: dict = json.load(f)
+        first_key = next(iter(flow_stats_dict))
+        flow_stats = flow_stats_dict[first_key]
+        flow_stats = SwitchAggFlowStatsDecoder().try_create_object(flow_stats)
+
+    return flow_stats
 
 
 if __name__ == "__main__":
