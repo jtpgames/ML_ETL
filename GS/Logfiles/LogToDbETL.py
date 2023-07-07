@@ -14,7 +14,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from Common import read_data_line_from_log_file
-from StringUtils import get_date_from_string
+from rast_common.StringUtils import get_date_from_string
 from CommonDb import training_data_exists_in_db, TrainingDataRow, SQLSelectExecutor, create_connection, \
     read_all_performance_metrics_from_db, read_all_training_data_from_db_using_sqlalchemy
 from TrainingDatabase import create_connection_using_sqlalchemy, create_training_data_table, \
@@ -159,12 +159,12 @@ def main(
         query_netdata: bool = typer.Option(
             False,
             "--netdata", "-n",
-            help="Query a netdata instance for performance metrics"
+            help="[WIP] Query a netdata instance for performance metrics"
         ),
-        enrich_with_request_statistics: bool = typer.Option(
+        enrich_with_statistics: bool = typer.Option(
             True,
             "--enrich", "-e",
-            help="Enrich training data with request statistics, if available"
+            help="Enrich training data with request and switch flow statistics, if available"
         )
 ):
     if query_netdata:
@@ -197,7 +197,7 @@ def main(
                 )
 
             tracker: Optional[NumberOfParallelCommandsTracker] = None
-            if enrich_with_request_statistics:
+            if enrich_with_statistics:
                 target_path = Path(log_file) \
                     .with_name("request_statistics_{}".format(day_to_get_metrics_from.date())) \
                     .with_suffix(".json")

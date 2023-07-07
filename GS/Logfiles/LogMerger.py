@@ -5,8 +5,8 @@ from pathlib import Path
 
 from itertools import groupby
 
-from Common import dir_path, get_timestamp_from_string
-from StringUtils import get_date_from_string
+from rast_common.StringUtils import dir_path, get_timestamp_from_string
+from rast_common.StringUtils import get_date_from_string
 
 
 class LogMerger:

@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, String, Float, TIMESTAMP, Engine, and_, fu
 from sqlalchemy.dialects.mysql import SMALLINT, INTEGER
 from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped, Session
 
-from StringUtils import get_date_from_string
+from rast_common.StringUtils import get_date_from_string
 
 
 class Base(DeclarativeBase):

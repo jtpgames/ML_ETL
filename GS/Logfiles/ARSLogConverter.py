@@ -3,7 +3,7 @@ import glob
 import os
 from os.path import join
 
-from Common import dir_path
+from rast_common.StringUtils import dir_path
 
 
 def merge_first_and_second_line(path: str):
