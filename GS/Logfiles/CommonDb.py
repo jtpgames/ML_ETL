@@ -1,3 +1,5 @@
+# TODO: Delete whole file, as everything is now implemented in the RAST-Common-Python library
+
 import sqlite3
 from datetime import datetime
 from sqlite3 import Connection, Error, Cursor

@@ -83,7 +83,7 @@ def main(
                 )
 
             tracker: Optional[NumberOfParallelCommandsTracker] = None
-            flow_stats: Optional[SwitchAggFlowStats] = None
+            flow_stats: Optional[list[SwitchAggFlowStats]] = None
             if enrich_with_statistics:
                 tracker = create_and_initialize_tracker(day_to_get_metrics_from, log_file)
                 flow_stats = create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file)
@@ -113,7 +113,7 @@ def main(
                     training_data_row.requests_per_minute = tracker.get_requests_per_minute_for(training_data_row.timestamp)
 
                 if flow_stats is not None:
-                    print(flow_stats.get_bytes_per_second_for(training_data_row.timestamp))
+                    print(flow_stats[0].get_bytes_per_second_for(training_data_row.timestamp))
 
                 training_data_rows.append(training_data_row)
 
@@ -148,7 +148,7 @@ def create_and_initialize_tracker(day_to_get_metrics_from, log_file):
     return tracker
 
 
-def create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file) -> Optional[SwitchAggFlowStats]:
+def create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file) -> Optional[list[SwitchAggFlowStats]]:
     target_path = Path(log_file) \
         .with_name("switch_flow_stats_{}".format(day_to_get_metrics_from.date())) \
         .with_suffix(".json")
@@ -157,12 +157,9 @@ def create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file) -> 
         return None
 
     with open(target_path, "r") as f:
-        flow_stats_dict: dict = json.load(f)
-        first_key = next(iter(flow_stats_dict))
-        flow_stats = flow_stats_dict[first_key]
-        flow_stats = SwitchAggFlowStatsDecoder().try_create_object(flow_stats)
+        all_flow_stats: list[SwitchAggFlowStats] = json.load(f, object_hook=SwitchAggFlowStatsDecoder.try_create_object)
 
-    return flow_stats
+        return all_flow_stats
 
 
 if __name__ == "__main__":
