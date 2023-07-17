@@ -113,12 +113,12 @@ def main(
                     training_data_row.requests_per_minute = tracker.get_requests_per_minute_for(training_data_row.timestamp)
 
                 if flow_stats is not None:
-                    for flow_stats_for_switch in flow_stats:
-                        training_data_row.switch_id = flow_stats_for_switch.switch_id
-                        training_data_row.bytes_per_second_transmitted_through_switch = flow_stats_for_switch \
-                            .get_bytes_per_second_for(training_data_row.timestamp)
-                        training_data_row.packets_per_second_transmitted_through_switch = flow_stats_for_switch \
-                            .get_packets_per_second_for(training_data_row.timestamp)
+                    flow_stats_for_switch = flow_stats[0]
+                    training_data_row.switch_id = flow_stats_for_switch.switch_id
+                    training_data_row.bytes_per_second_transmitted_through_switch = flow_stats_for_switch \
+                        .get_bytes_per_second_for(training_data_row.timestamp)
+                    training_data_row.packets_per_second_transmitted_through_switch = flow_stats_for_switch \
+                        .get_packets_per_second_for(training_data_row.timestamp)
 
                 training_data_rows.append(training_data_row)
 
