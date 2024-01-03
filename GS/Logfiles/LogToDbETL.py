@@ -85,6 +85,7 @@ def main(
             tracker: Optional[NumberOfParallelCommandsTracker] = None
             flow_stats: Optional[list[SwitchAggFlowStats]] = None
             if enrich_with_statistics:
+                print("Enriching with additional files")
                 tracker = create_and_initialize_tracker(day_to_get_metrics_from, log_file)
                 flow_stats = create_and_initialize_switchflowstats(day_to_get_metrics_from, log_file)
 
