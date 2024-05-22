@@ -17,7 +17,13 @@ from sqlalchemy.orm import Session
 
 from Common import read_data_line_from_log_file
 from CommonDb import TrainingDataRow
-from GS.Logfiles.GSLogToLocustConverter import NumberOfParallelCommandsTracker
+from GSLogToLocustConverter import NumberOfParallelCommandsTracker
+
+import os
+
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 
 def setup_db_using_sqlalchemy() -> Engine:
@@ -42,7 +48,7 @@ def setup_db_using_sqlalchemy() -> Engine:
 def main(
         directory: str = typer.Argument(
             ...,
-            help="The directory the log files are located in"
+            help="The directory the log files are located in (relative to this scripts location)"
         ),
         query_netdata: bool = typer.Option(
             False,
