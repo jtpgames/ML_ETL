@@ -8,15 +8,15 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from rast_common.StringUtils import get_date_from_string
-from rast_common.SwitchAggFlowStats import SwitchAggFlowStats, SwitchAggFlowStatsDecoder
-from rast_common.TrainingDatabase import create_connection_using_sqlalchemy, create_training_data_table, \
+from rast_common.main.StringUtils import get_date_from_string
+from rast_common.main.SwitchAggFlowStats import SwitchAggFlowStats, SwitchAggFlowStatsDecoder
+from rast_common.main.TrainingDatabase import create_connection_using_sqlalchemy, create_training_data_table, \
     training_data_exists_in_db_using_sqlalchemy, insert_training_data
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from Common import read_data_line_from_log_file
-from CommonDb import TrainingDataRow
+from rast_common.main.TrainingDatabase import TrainingDataRow
 from GSLogToLocustConverter import NumberOfParallelCommandsTracker
 
 import os
