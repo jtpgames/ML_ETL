@@ -26,8 +26,8 @@ dname = os.path.dirname(abspath)
 os.chdir(dname)
 
 
-def setup_db_using_sqlalchemy() -> Engine:
-    db_directory = r"../../db"
+def setup_db_using_sqlalchemy(output_directory: str) -> Engine:
+    db_directory = output_directory
 
     today = datetime.now().strftime("%Y-%m-%d")
 
@@ -50,6 +50,10 @@ def main(
             ...,
             help="The directory the log files are located in (relative to this scripts location)"
         ),
+        output_directory: str = typer.Argument(
+            r"../../db",
+            help="The directory the database should be saved at (relative to this scripts location)"
+        ),
         query_netdata: bool = typer.Option(
             False,
             "--netdata", "-n",
@@ -65,7 +69,7 @@ def main(
         from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, \
             get_row_from_dataframe_using_nearest_time
 
-    db_connection = setup_db_using_sqlalchemy()
+    db_connection = setup_db_using_sqlalchemy(output_directory)
     db_connection = Session(db_connection)
 
     loop = asyncio.get_event_loop()
