@@ -3,7 +3,7 @@ import json
 import math
 from datetime import datetime, time
 from glob import glob
-from os import path, mkdir
+from os import path, makedirs
 from pathlib import Path
 from typing import Optional
 
@@ -34,7 +34,7 @@ def setup_db_using_sqlalchemy(output_directory: str) -> Engine:
     pathToDb = db_directory + "/trainingdata_{}.db".format(today)
 
     if not path.exists(db_directory):
-        mkdir(db_directory)
+        makedirs(db_directory)
 
     db_connection = create_connection_using_sqlalchemy(pathToDb, True)
     if db_connection is None:
