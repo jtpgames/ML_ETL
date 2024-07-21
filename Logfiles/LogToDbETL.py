@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from Common import read_data_line_from_log_file
 from rast_common.main.TrainingDatabase import TrainingDataRow
-from GSLogToLocustConverter import NumberOfParallelCommandsTracker
+from RequestLogToCLF import NumberOfParallelCommandsTracker
 
 import os
 
@@ -66,7 +66,7 @@ def main(
         )
 ):
     if query_netdata:
-        from GS.AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, \
+        from AcquirePerformanceMetricsFromNetdata import get_system_cpu_data, \
             get_row_from_dataframe_using_nearest_time
 
     db_connection = setup_db_using_sqlalchemy(output_directory)
