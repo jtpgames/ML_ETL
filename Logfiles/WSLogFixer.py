@@ -4,7 +4,7 @@ import os
 from os import SEEK_SET
 from os.path import join
 
-from rast_common.StringUtils import dir_path
+from rast_common.main.StringUtils import dir_path
 
 
 def peek_line(f):
