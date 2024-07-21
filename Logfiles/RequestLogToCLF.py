@@ -246,7 +246,7 @@ def main():
     parser.add_argument('--files', '-f',
                         type=str,
                         nargs='+',
-                        help='the paths to the ARS log files')
+                        help='the paths to the (merged) request log files')
     parser.add_argument('--directory', '-d',
                         type=dir_path,
                         help='the directory the log files are located in')
