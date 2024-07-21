@@ -65,7 +65,7 @@ class NumberOfParallelCommandsTracker:
         return json.dump(self, file, cls=NumberOfParallelCommandsTrackerEncoder, indent=2)
 
 
-class GSLogConverter:
+class RequestLogConverter:
 
     def __init__(self, args):
         self.started_commands = {}
@@ -97,7 +97,7 @@ class GSLogConverter:
                     (tid, _) = self.process_threadid_and_timestamp(line)
                     self.process_cmd(line, tid)
                 elif "CMD-ENDE" in line:
-                    (tid, end_time) = GSLogConverter.get_threadid_and_timestamp(line)
+                    (tid, end_time) = RequestLogConverter.get_threadid_and_timestamp(line)
 
                     if tid not in self.started_commands:
                         print("Command ended without corresponding start log entry")
@@ -198,13 +198,13 @@ class GSLogConverter:
     @staticmethod
     def write_ARS_CMDs_to_target_log(data, target_file):
         if "ID_REQ_KC_STORE7D3BPACKET" in data["cmd"]:
-            GSLogConverter.write_to_target_log(data, target_file)
+            RequestLogConverter.write_to_target_log(data, target_file)
 
     @staticmethod
     def get_threadid_and_timestamp(line: str) -> Tuple[int, datetime]:
         # format: [tid] yyyy-MM-dd hh-mm-ss.f
 
-        tid = GSLogConverter.get_threadid_from_line_optimized(line)
+        tid = RequestLogConverter.get_threadid_from_line_optimized(line)
 
         timestamp = get_timestamp_from_line(line)
 
@@ -212,7 +212,7 @@ class GSLogConverter:
 
     def process_threadid_and_timestamp(self, line: str) -> Tuple[int, datetime]:
 
-        tid, timestamp = GSLogConverter.get_threadid_and_timestamp(line)
+        tid, timestamp = RequestLogConverter.get_threadid_and_timestamp(line)
 
         if tid in self.started_commands.keys():
             print(tid, " already processes another command", self.started_commands[tid]["cmd"])
@@ -240,9 +240,9 @@ class GSLogConverter:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Convert log files '
-                                                 'of the GS legacy system '
-                                                 'to our custom locust log file format.')
+    parser = argparse.ArgumentParser(description='Convert request log files '
+                                                 '(in the format of the GS legacy system) '
+                                                 'to our custom common log format.')
     parser.add_argument('--files', '-f',
                         type=str,
                         nargs='+',
@@ -257,16 +257,16 @@ def main():
     if args.files is None and args.directory is None:
         parser.print_help()
         exit(1)
-    logfilesToConvert = args.files if args.files is not None else []
+    logfiles_to_convert = args.files if args.files is not None else []
     if args.directory is not None:
         logfiles = glob.glob(join(args.directory, "Merged_*.log"))
         logfiles.extend(glob.glob(join(args.directory, "teastore-cmd_*.log")))
-        logfilesToConvert.extend(logfiles)
+        logfiles_to_convert.extend(logfiles)
     # remove duplicates trick
-    logfilesToConvert = sorted(set(logfilesToConvert))
-    print("Logs to convert: " + str(logfilesToConvert))
-    for path in logfilesToConvert:
-        converter = GSLogConverter(args)
+    logfiles_to_convert = sorted(set(logfiles_to_convert))
+    print("Logs to convert: " + str(logfiles_to_convert))
+    for path in logfiles_to_convert:
+        converter = RequestLogConverter(args)
         print("Converting ", path)
         converter.read(path)
 
