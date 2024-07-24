@@ -29,7 +29,7 @@ def merge_first_and_second_line(path: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert ARS log files to common log file format.')
+    parser = argparse.ArgumentParser(description='Convert ARS log files to GS request log file format.')
     parser.add_argument('--files', '-f',
                         type=str,
                         nargs='+',
@@ -47,10 +47,10 @@ if __name__ == "__main__":
     logfilesToConvert = args.files if args.files is not None else []
 
     if args.directory is not None:
-        logfiles = glob.glob(join(args.directory, "koppelcmd*.log"))
+        logfiles = glob.glob(join(args.directory, '**', '*koppelcmd*.log'), recursive=True)
         logfilesToConvert.extend(logfiles)
 
-    print("Logs to convert: " + str(logfilesToConvert))
+    print("Logs to convert: \n" + "\n".join(logfilesToConvert))
 
     for path in logfilesToConvert:
         merge_first_and_second_line(path)

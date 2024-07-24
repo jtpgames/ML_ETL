@@ -28,6 +28,9 @@ def fix_log(path: str):
     if "Worker-cmd" in path:
         target_path = path.replace("Worker-cmd", "WSCmd_f")
     else:
+        if "WSCmd_f" in path:
+            print(f"{path} already fixed")
+            return
         target_path = path.replace("WSCmd", "WSCmd_f")
 
     print("Converting ", path)
@@ -54,7 +57,7 @@ def fix_log(path: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Convert WS log files to common log file format.')
+    parser = argparse.ArgumentParser(description='Fixes some known issues in WS log files.')
     parser.add_argument('--files', '-f',
                         type=str,
                         nargs='+',
@@ -72,11 +75,11 @@ if __name__ == "__main__":
     logfilesToConvert = args.files if args.files is not None else []
 
     if args.directory is not None:
-        logfiles = glob.glob(join(args.directory, "Worker-cmd*.log"))
-        logfiles.extend(glob.glob(join(args.directory, "WSCmd*.log")))
+        logfiles = glob.glob(join(args.directory, '**', 'Worker-cmd*.log'), recursive=True)
+        logfiles.extend(glob.glob(join(args.directory, '**', 'WSCmd*.log'), recursive=True))
         logfilesToConvert.extend(logfiles)
 
-    print("Logs to convert: " + str(logfilesToConvert))
+    print("Logs to convert: \n" + "\n".join(logfilesToConvert))
 
     for path in logfilesToConvert:
         fix_log(path)
