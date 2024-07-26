@@ -1,9 +1,10 @@
 import asyncio
+import glob
 import json
 import math
 from datetime import datetime, time
-from glob import glob
 from os import path, makedirs
+from os.path import join
 from pathlib import Path
 from typing import Optional
 
@@ -21,12 +22,14 @@ from RequestLogToCLF import NumberOfParallelCommandsTracker
 
 import os
 
-abspath = os.path.abspath(__file__)
-dname = os.path.dirname(abspath)
-os.chdir(dname)
-
 
 def setup_db_using_sqlalchemy(output_directory: str) -> Engine:
+    current_dir = os.getcwd()
+
+    abspath = os.path.abspath(__file__)
+    dname = os.path.dirname(abspath)
+    os.chdir(dname)
+
     db_directory = output_directory
 
     today = datetime.now().strftime("%Y-%m-%d")
@@ -42,6 +45,8 @@ def setup_db_using_sqlalchemy(output_directory: str) -> Engine:
 
     create_training_data_table(db_connection)
 
+    os.chdir(current_dir)
+
     return db_connection
 
 
@@ -51,7 +56,7 @@ def main(
             help="The directory the log files are located in (relative to this scripts location)"
         ),
         output_directory: str = typer.Argument(
-            r"../../db",
+            r"../db",
             help="The directory the database should be saved at (relative to this scripts location)"
         ),
         query_netdata: bool = typer.Option(
@@ -74,7 +79,10 @@ def main(
 
     loop = asyncio.get_event_loop()
 
-    for log_file in sorted(glob(f"{directory}/Conv_*.log")):
+    logfiles = glob.glob(join(directory, '**', 'Conv_*.log'), recursive=True)
+    print("Logs to process: " + str(logfiles))
+
+    for log_file in sorted(logfiles):
         if not training_data_exists_in_db_using_sqlalchemy(db_connection, log_file):
 
             print("Processing ", log_file)

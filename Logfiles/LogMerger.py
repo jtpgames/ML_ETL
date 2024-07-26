@@ -59,11 +59,12 @@ if __name__ == "__main__":
         parser.print_help()
         exit(1)
 
-    logfiles = glob.glob(join(args.directory, "*.log"))
+    logfiles = glob.glob(join(args.directory, '**', '*.log'), recursive=True)
 
     # group the files by the date in the file name
     data = sorted(logfiles, key=get_date_from_string)
     for group, logfile in groupby(data, key=get_date_from_string):
         # omit the merged logs created by this script
         logfilesToAggregate = filter(lambda f: "Merged_" not in f, list(logfile))
+
         LogMerger.aggregate(group, list(logfilesToAggregate))

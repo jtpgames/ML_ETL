@@ -10,6 +10,43 @@ from rast_common.main.StringUtils import dir_path, get_timestamp_from_line
 from rast_common.main.StringUtils import get_date_from_string
 
 
+def get_threadid_from_line_optimized(line: str) -> int:
+    # Find the positions of the first '[' and the next ']'
+    start = line.find('[')
+    end = line.find(']', start)
+
+    # If both '[' and ']' are found, extract the substring and convert it to an integer
+    if start != -1 and end != -1:
+        tid_string = line[start + 1:end]
+        tid = int(tid_string)
+        return tid
+
+    # If the thread ID is not found, return a default value (you can adjust this as needed)
+    return 0
+
+
+def get_threadid_and_timestamp(line: str) -> Tuple[int, datetime]:
+    # format: [tid] yyyy-MM-dd hh-mm-ss.f
+
+    tid = get_threadid_from_line_optimized(line)
+
+    timestamp = get_timestamp_from_line(line)
+
+    return tid, timestamp
+
+
+def write_to_target_log(data, target_file):
+    receivedAt = data['receivedAt'].strftime('%Y-%m-%d %H:%M:%S,%f')
+
+    firstPart = f"[{receivedAt:26}] " \
+                f"(PR: {data['parallelRequestsStart']:2}/" \
+                f"{data['parallelRequestsEnd']:2}/" \
+                f"{data['parallelCommandsFinished']:2})"
+    secondPart = f"{data['cmd']:35}:"
+    thirdPart = f"Response time {data['time']} ms"
+    target_file.write(f"{firstPart} {secondPart} {thirdPart}\n")
+
+
 class NumberOfParallelCommandsTrackerEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, NumberOfParallelCommandsTracker):
@@ -97,7 +134,7 @@ class RequestLogConverter:
                     (tid, _) = self.process_threadid_and_timestamp(line)
                     self.process_cmd(line, tid)
                 elif "CMD-ENDE" in line:
-                    (tid, end_time) = RequestLogConverter.get_threadid_and_timestamp(line)
+                    (tid, end_time) = get_threadid_and_timestamp(line)
 
                     if tid not in self.started_commands:
                         print("Command ended without corresponding start log entry")
@@ -115,7 +152,7 @@ class RequestLogConverter:
 
                     execution_time_ms = (end_time - start_time).total_seconds() * 1000
 
-                    self.write_to_target_log(
+                    write_to_target_log(
                         {
                             "receivedAt": end_time,
                             "cmd": self.started_commands[tid]["cmd"],
@@ -155,64 +192,13 @@ class RequestLogConverter:
         target_file.close()
 
     @staticmethod
-    def get_threadid_from_line(line: str) -> int:
-        tid = re.search(r"\[\d*\]", line).group()
-        tid = tid.replace("[", "", 1)
-        tid = tid.replace("]", "", 1)
-        tid = int(tid)
-
-        return tid
-
-    @staticmethod
-    def get_threadid_from_line_optimized(line: str) -> int:
-        found_left_bracket = False
-        tid_string = []
-
-        for c in line:
-            if c == '[':
-                found_left_bracket = True
-                continue
-            elif c == ']':
-                break
-
-            if found_left_bracket:
-                tid_string.append(c)
-
-        tid_string = ''.join(tid_string)
-        tid = int(tid_string)
-
-        return tid
-
-    @staticmethod
-    def write_to_target_log(data, target_file):
-        receivedAt = data['receivedAt'].strftime('%Y-%m-%d %H:%M:%S,%f')
-
-        firstPart = f"[{receivedAt:26}] " \
-                    f"(PR: {data['parallelRequestsStart']:2}/" \
-                    f"{data['parallelRequestsEnd']:2}/" \
-                    f"{data['parallelCommandsFinished']:2})"
-        secondPart = f"{data['cmd']:35}:"
-        thirdPart = f"Response time {data['time']} ms"
-        target_file.write(f"{firstPart} {secondPart} {thirdPart}\n")
-
-    @staticmethod
     def write_ARS_CMDs_to_target_log(data, target_file):
         if "ID_REQ_KC_STORE7D3BPACKET" in data["cmd"]:
-            RequestLogConverter.write_to_target_log(data, target_file)
-
-    @staticmethod
-    def get_threadid_and_timestamp(line: str) -> Tuple[int, datetime]:
-        # format: [tid] yyyy-MM-dd hh-mm-ss.f
-
-        tid = RequestLogConverter.get_threadid_from_line_optimized(line)
-
-        timestamp = get_timestamp_from_line(line)
-
-        return tid, timestamp
+            write_to_target_log(data, target_file)
 
     def process_threadid_and_timestamp(self, line: str) -> Tuple[int, datetime]:
 
-        tid, timestamp = RequestLogConverter.get_threadid_and_timestamp(line)
+        tid, timestamp = get_threadid_and_timestamp(line)
 
         if tid in self.started_commands.keys():
             print(tid, " already processes another command", self.started_commands[tid]["cmd"])
@@ -257,14 +243,19 @@ def main():
     if args.files is None and args.directory is None:
         parser.print_help()
         exit(1)
+
+    print(type(args.directory))
+    print(args.directory)
+
     logfiles_to_convert = args.files if args.files is not None else []
     if args.directory is not None:
-        logfiles = glob.glob(join(args.directory, "Merged_*.log"))
-        logfiles.extend(glob.glob(join(args.directory, "teastore-cmd_*.log")))
+        logfiles = glob.glob(join(args.directory, '**', 'Merged_*.log'), recursive=True)
+        logfiles.extend(glob.glob(join(args.directory, '**', "teastore-cmd_*.log"), recursive=True))
         logfiles_to_convert.extend(logfiles)
     # remove duplicates trick
     logfiles_to_convert = sorted(set(logfiles_to_convert))
     print("Logs to convert: " + str(logfiles_to_convert))
+
     for path in logfiles_to_convert:
         converter = RequestLogConverter(args)
         print("Converting ", path)
