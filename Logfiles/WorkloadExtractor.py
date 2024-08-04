@@ -183,8 +183,8 @@ if __name__ == "__main__":
     logfilesToConvert = args.files if args.files is not None else []
 
     if args.directory is not None:
-        logfiles = glob.glob(join(args.directory, "*-Merged_*.log"))
-        logfiles.extend(glob.glob(join(args.directory, "teastore-cmd_*.log")))
+        logfiles = glob.glob(join(args.directory, '**', 'Merged_*.log'), recursive=True)
+        logfiles.extend(glob.glob(join(args.directory, '**', "teastore-cmd_*.log"), recursive=True))
         logfilesToConvert.extend(logfiles)
 
     # remove duplicates trick
