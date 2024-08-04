@@ -244,16 +244,16 @@ def main():
         parser.print_help()
         exit(1)
 
-    print(type(args.directory))
-    print(args.directory)
-
     logfiles_to_convert = args.files if args.files is not None else []
+
     if args.directory is not None:
         logfiles = glob.glob(join(args.directory, '**', 'Merged_*.log'), recursive=True)
         logfiles.extend(glob.glob(join(args.directory, '**', "teastore-cmd_*.log"), recursive=True))
         logfiles_to_convert.extend(logfiles)
+
     # remove duplicates trick
     logfiles_to_convert = sorted(set(logfiles_to_convert))
+
     print("Logs to convert: " + str(logfiles_to_convert))
 
     for path in logfiles_to_convert:
