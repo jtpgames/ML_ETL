@@ -1,6 +1,6 @@
 netdata==0.2.0
 pandas~=1.5.1
-numpy~=1.22.3
+numpy~=1.26.4
 typer~=0.4.1
 SQLAlchemy~=2.0.11
 git+https://github.com/jtpgames/RAST-Common-Python.git
